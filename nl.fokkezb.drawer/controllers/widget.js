@@ -5,6 +5,12 @@ var LTAG = '[DrawerWidget]',
 	mod, consts, props, methods;
 
 
+/**
+ * SEF to organize otherwise inline constructor code
+ *
+ * @param {Object} args arguments passed to the controller
+ * @returns void
+ */
 (function constructor(args) {
 
 	// determine drawer module
@@ -20,18 +26,15 @@ var LTAG = '[DrawerWidget]',
 
 			// fix: https://jira.appcelerator.org/browse/TC-3583
 			if (!child) {
+				
 				return;
 			}
-
+			
 			var role = child.role;
-
-			if (mod !== MOD_NAPP_DRAWER) {
-				role = role.replace('Window', 'View');
-			}
-
-			if (role) {
-				args[role] = child;
-			}
+			
+			mod !== MOD_NAPP_DRAWER && (role = role.replace('Window', 'View'));
+			
+			role && (args[role] = child);
 		});
 	}
 
@@ -44,7 +47,8 @@ var LTAG = '[DrawerWidget]',
 			'openDrawerGestureMode',
 			'centerHiddenInteractionMode',
 			'animationMode',
-			'statusBarStyle'
+			'statusBarStyle',
+			'statusBarAnimation'
 		];
 	}
 	else {
@@ -69,10 +73,12 @@ var LTAG = '[DrawerWidget]',
 			args.hamburgerIcon = args.drawerIndicatorEnabled;
 			delete args.drawerIndicatorEnabled;
 		}
+		
 		if (_.has(args, 'drawerArrowIcon')) {
 			args.arrowAnimation = args.drawerArrowIcon;
 			delete args.drawerArrowIcon;
 		}
+		
 		if (_.has(args, 'drawerArrowIconColor')) {
 			args.hamburgerIconColor = args.drawerArrowIconColor;
 			delete args.drawerArrowIconColor;
@@ -84,10 +90,12 @@ var LTAG = '[DrawerWidget]',
 			args.drawerIndicatorEnabled = args.hamburgerIcon;
 			delete args.hamburgerIcon;
 		}
+		
 		if (_.has(args, 'arrowAnimation')) {
 			args.drawerArrowIcon = args.arrowAnimation;
 			delete args.arrowAnimation;
 		}
+		
 		if (_.has(args, 'hamburgerIconColor')) {
 			args.drawerArrowIconColor = args.hamburgerIconColor;
 			delete args.hamburgerIconColor;
@@ -110,7 +118,6 @@ var LTAG = '[DrawerWidget]',
 
 		$.window = $.instance;
 		$.addTopLevelView($.instance);
-
 	}
 	else {
 
@@ -119,7 +126,7 @@ var LTAG = '[DrawerWidget]',
 
 		$.window = Ti.UI.createWindow(_.extend(_.pick(args, [
 
-			'orientationModes', 'exitOnClose', 'backgroundColor'
+			'orientationModes', 'exitOnClose', 'backgroundColor', 'theme'
 
 		]), args.window || {}));
 
@@ -131,15 +138,14 @@ var LTAG = '[DrawerWidget]',
 
 	if (OS_ANDROID) {
 
-		$.window.addEventListener('open', function _handleDrawerWindowOpen(e) {
+		$.window.addEventListener('open', function _handleDrawerWindowOpen(event) {
 
-			var window = e.source,
+			var window = event.source,
 				actionBar;
 
-			window.removeEventListener(e.type, _handleDrawerWindowOpen);
+			window.removeEventListener(event.type, _handleDrawerWindowOpen);
 
 			actionBar = (mod === MOD_NAPP_DRAWER ? this : window).getActivity().getActionBar();
-
 
 			if (actionBar) {
 
@@ -156,7 +162,6 @@ var LTAG = '[DrawerWidget]',
 					return;
 				});
 			}
-
 
 			return;
 		});
@@ -245,33 +250,52 @@ var LTAG = '[DrawerWidget]',
 	if (mod === MOD_NAPP_DRAWER) {
 
 		$.closeLeftWindow = function () {
+		    
 			if ($.instance.isLeftWindowOpen()) {
+			    
 				return $.instance.toggleLeftWindow();
 			}
 		};
 
 		$.closeRightWindow = function () {
+		    
 			if ($.instance.isRightWindowOpen()) {
+			    
 				return $.instance.toggleRightWindow();
 			}
 		};
 
 		$.openLeftWindow = function () {
+		    
 			if (!$.instance.isLeftWindowOpen()) {
+			    
 				return $.instance.toggleLeftWindow();
 			}
 		};
 
 		$.openRightWindow = function () {
+		    
 			if (!$.instance.isRightWindowOpen()) {
+			    
 				return $.instance.toggleRightWindow();
 			}
 		};
 
 		$.replaceCenterView = function (view) {
+		    
 			return $.instance.setCenterView(view);
 		};
-
+		
+		$.showStatusBar = function() {
+			
+			return $.module.showStatusBar();
+		};
+		
+		$.hideStatusBar = function() {
+			
+			return $.module.hideStatusBar();
+		};
+		
 		$.leftView = $.leftWindow;
 		$.setLeftView = $.setLeftWindow;
 		$.getLeftView = $.getLeftWindow;
@@ -299,22 +323,27 @@ var LTAG = '[DrawerWidget]',
 	else {
 
 		$.open = function (params) {
+		    
 			return $.window.open(params);
 		};
 
 		$.close = function (params) {
+		    
 			return $.window.close(params);
 		};
 
 		$.isAnyWindowOpen = function () {
+		    
 			return $.instance.getIsLeftDrawerOpen() || $.instance.getIsRightDrawerOpen();
 		};
 
 		$.isLeftWindowOpen = function () {
+		    
 			return $.instance.getIsLeftDrawerOpen();
 		};
 
 		$.isRightWindowOpen = function () {
+		    
 			return $.instance.getIsRightDrawerOpen();
 		};
 
@@ -349,15 +378,28 @@ var LTAG = '[DrawerWidget]',
 
 	// events
 	$.on = function (event, callback, context) {
-		return $.instance.addEventListener(event, callback);
+        
+        if (mod !== MOD_NAPP_DRAWER && (event === 'open' || event === 'close')) {
+            
+            return $.window.addEventListener(event, callback);
+        }
+        
+		return $.instance.addEventListener(_translateEvent(event), callback);
 	};
 
 	$.off = function (event, callback, context) {
-		return $.instance.removeEventListener(event, callback);
+        
+        if (mod !== MOD_NAPP_DRAWER && (event === 'open' || event === 'close')) {
+            
+            return $.window.removeEventListener(event, callback);
+        }
+	    
+		return $.instance.removeEventListener(_translateEvent(event), callback);
 	};
 
 	$.trigger = function (event, args) {
-		return $.instance.fireEvent(event, args);
+	    
+		return $.instance.fireEvent(_translateEvent(event), args);
 	};
 
 	$.addEventListener = $.on;
@@ -423,3 +465,21 @@ function _exposeMethods() {
 	});
 
 } // END _exposeMethods()
+
+
+function _translateEvent(event) {
+    
+    if (mod === MOD_NAPP_DRAWER) {
+        
+        event === 'draweropen' && (event = 'windowDidOpen');
+        event === 'drawerclose' && (event = 'windowDidClose');
+    }
+    else {
+        
+        event === 'windowDidOpen' && (event = 'draweropen');
+        event === 'windowDidClose' && (event = 'drawerclose');
+    }
+    
+    return event;
+    
+} // END _translateEvent()
