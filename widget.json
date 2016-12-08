@@ -11,6 +11,7 @@
 	"tags":"slide,drawer,nappdrawer,drawerlayout,facebook,menu,side",
 	"platforms":"android,ios",
 	"modules": {
-		"dk.napp.drawer": "*"
+		"dk.napp.drawer": "*",
+		"com.tripvi.drawerlayout": "*"
 	}
 }
